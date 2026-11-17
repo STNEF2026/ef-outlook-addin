@@ -1,9 +1,11 @@
 name: Refresh conversation list
 
+# Manual only for now: executiveforecast.com's bot protection turns away GitHub's servers.
+# Once the website allows it, re-add the nightly schedule:
+#   schedule:
+#     - cron: "17 4 * * *"
 on:
-  schedule:
-    - cron: "17 4 * * *"   # every day, 04:17 UTC
-  workflow_dispatch: {}     # "Run workflow" button for a manual refresh
+  workflow_dispatch: {}     # "Run workflow" button
 
 permissions:
   contents: write
