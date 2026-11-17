@@ -1,0 +1,26 @@
+name: Refresh conversation list
+
+on:
+  schedule:
+    - cron: "17 4 * * *"   # every day, 04:17 UTC
+  workflow_dispatch: {}     # "Run workflow" button for a manual refresh
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/fetch_conversations.mjs
+      - name: Commit if changed
+        run: |
+          git config user.name "ef-bot"
+          git config user.email "ef-bot@users.noreply.github.com"
+          git add conversations.json
+          git diff --cached --quiet || git commit -m "Refresh conversations.json"
+          git push
