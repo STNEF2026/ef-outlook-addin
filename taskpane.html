@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EF Conversations</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+  :root{--ink:#1a1a1a;--muted:#6b6b6b;--line:#e4e1dc;--bg:#faf9f7;--accent:#8a6d3b;--ok:#2e7d32;--err:#b3261e}
+  *{box-sizing:border-box}
+  body{margin:0;font:13px/1.4 "Segoe UI",Arial,Helvetica,sans-serif;color:var(--ink);background:#fff}
+  header{padding:12px 14px 10px;border-bottom:1px solid var(--line);background:var(--bg)}
+  header h1{margin:0;font:600 15px/1.2 Georgia,"Times New Roman",serif;letter-spacing:.2px}
+  header p{margin:2px 0 0;color:var(--muted);font-size:11.5px}
+  main{padding:10px 14px 90px}
+  .search{position:relative}
+  .search input{width:100%;padding:9px 30px 9px 10px;border:1px solid #cfcac2;border-radius:6px;font-size:13px;outline:none}
+  .search input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(138,109,59,.15)}
+  .search .clear{position:absolute;right:6px;top:6px;border:0;background:none;font-size:16px;color:#999;cursor:pointer;display:none}
+  .meta{color:var(--muted);font-size:11px;margin:6px 2px}
+  .list{list-style:none;margin:0;padding:0}
+  .item{display:flex;gap:10px;padding:8px 6px;border-radius:6px;cursor:pointer;align-items:flex-start}
+  .item:hover{background:#f3f1ed}
+  .item.sel{background:#f0ebe1}
+  .thumb{width:44px;height:44px;border-radius:4px;object-fit:cover;object-position:50% 20%;background:#e9e6e1;flex:none}
+  .initials{width:44px;height:44px;border-radius:4px;background:#e9e6e1;color:#8a8278;display:flex;align-items:center;justify-content:center;font-weight:600;flex:none}
+  .item .t{min-width:0}
+  .item .n{font-weight:600}
+  .item .r{color:var(--muted);font-size:11.5px}
+  .item .h{font-size:12px;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .item .add{margin-left:auto;flex:none;border:1px solid #cfcac2;background:#fff;border-radius:50%;width:24px;height:24px;line-height:20px;text-align:center;color:var(--accent);font-size:16px}
+  .item.sel .add{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .more{display:block;width:100%;margin:6px 0;padding:7px;border:1px dashed #cfcac2;background:#fff;border-radius:6px;cursor:pointer;color:var(--muted)}
+  h2{font:600 12px/1.2 "Segoe UI",Arial,sans-serif;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:16px 0 6px}
+  .chosen .c{border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:8px;background:#fff}
+  .chosen .row{display:flex;gap:8px;align-items:center}
+  .chosen .row .n{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chosen button.ic{border:0;background:#f3f1ed;border-radius:4px;width:24px;height:24px;cursor:pointer;color:#555}
+  .chosen textarea{width:100%;margin-top:6px;border:1px solid #ddd8d0;border-radius:4px;padding:6px;font:12px/1.35 "Segoe UI",Arial,sans-serif;resize:vertical;min-height:44px}
+  .chosen .hint{font-size:11px;color:var(--muted)}
+  .opts label{display:flex;gap:6px;align-items:center;margin:5px 0;cursor:pointer}
+  .opts select{padding:4px 6px;border:1px solid #cfcac2;border-radius:4px}
+  .preview{border:1px solid var(--line);border-radius:6px;padding:8px;overflow:auto;background:#fff}
+  .preview img{max-width:100%}
+  footer{position:fixed;left:0;right:0;bottom:0;padding:10px 14px;background:#fff;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center}
+  .btn{flex:1;padding:10px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-weight:600;cursor:pointer;font-size:13px}
+  .btn.secondary{flex:none;background:#fff;color:var(--accent)}
+  .btn:disabled{opacity:.45;cursor:default}
+  .toast{position:fixed;left:14px;right:14px;bottom:62px;padding:8px 10px;border-radius:6px;font-size:12px;display:none}
+  .toast.ok{display:block;background:#e8f3e9;color:var(--ok)}
+  .toast.err{display:block;background:#fbe9e7;color:var(--err)}
+  .empty{color:var(--muted);padding:10px 2px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Executive Forecast — Conversations</h1>
+  <p>Search a published conversation and insert it into this email.</p>
+</header>
+
+<main>
+  <div class="search">
+    <input id="q" type="search" placeholder="Name, company, country or topic…" autocomplete="off" autofocus>
+    <button class="clear" id="clear" title="Clear">×</button>
+  </div>
+  <div class="meta" id="meta">Loading…</div>
+  <ul class="list" id="results"></ul>
+  <button class="more" id="more" hidden>Show more</button>
+
+  <section id="chosenWrap" hidden>
+    <h2>To insert</h2>
+    <div class="chosen" id="chosen"></div>
+
+    <h2>Options</h2>
+    <div class="opts">
+      <label>Layout
+        <select id="layout">
+          <option value="rows">One per row (photo left)</option>
+          <option value="grid">Two per row</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="lead"> Add the line “For reference, we recently met with:”</label>
+    </div>
+
+    <h2>Preview</h2>
+    <div class="preview" id="preview"></div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<footer>
+  <button class="btn" id="insert" disabled>Insert at cursor</button>
+  <button class="btn secondary" id="copy" disabled title="Copy as formatted text to paste anywhere">Copy</button>
+</footer>
+
+<script>
+(() => {
+  // ---------- Settings ----------
+  const SITE = 'https://executiveforecast.com';
+  // Live mode: the add-in is served from executiveforecast.com itself, so it can call the site's own search.
+  // Snapshot mode: served from anywhere else; it reads conversations.json sitting next to this file.
+  const LIVE = /(^|\.)executiveforecast\.com$/i.test(location.hostname);
+  const SNAPSHOT_URL = 'conversations.json';
+  const MAX = 6;
+  const PAGE = 24;
+
+  // ---------- State ----------
+  let inOutlook = false;
+  let all = null;            // snapshot rows
+  let shown = [];            // rows on screen
+  let page = 1, totalPages = 1, lastQ = '', lastTotal = 0;
+  const chosen = [];         // {row, quote}
+  const quoteCache = new Map();
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const norm = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+
+  // ---------- Data ----------
+  function cleanQuote(desc, name) {
+    if (!desc) return '';
+    const t = document.createElement('textarea'); t.innerHTML = desc; let s = t.value.trim();
+    // drop trailing attribution:  "…" - Name, Role at Company
+    const cut = s.search(/["”]\s*[-–—]\s+\S/);
+    if (cut > 0) s = s.slice(0, cut + 1);
+    s = s.replace(/^["“]+/, '').replace(/["”]+$/, '').trim();
+    return s;
+  }
+
+  async function searchLive(q, p) {
+    const u = new URL('/api/conversations', location.origin);
+    if (q) u.searchParams.set('q', q);
+    u.searchParams.set('page', p);
+    const r = await fetch(u); if (!r.ok) throw new Error('Search failed (' + r.status + ')');
+    const j = await r.json();
+    return { rows: j.rows || [], total: j.total || 0, totalPages: j.totalPages || 1 };
+  }
+
+  async function loadSnapshot() {
+    if (all) return all;
+    const r = await fetch(SNAPSHOT_URL, { cache: 'no-cache' });
+    if (!r.ok) throw new Error('Could not load the conversation list (' + r.status + ')');
+    const j = await r.json();
+    all = (j.rows || j).map(x => ({ ...x, _s: norm([x.name, x.company, x.role, x.headline, x.title, x.region, x.year, (x.people||[]).map(p=>p.name).join(' ')].join(' ')) }));
+    if (j.updatedAt) $('meta').dataset.updated = j.updatedAt;
+    return all;
+  }
+
+  async function searchSnapshot(q, p) {
+    const rows = await loadSnapshot();
+    const terms = norm(q).split(/\s+/).filter(Boolean);
+    const hit = terms.length ? rows.filter(r => terms.every(t => r._s.includes(t))) : rows;
+    return { rows: hit.slice((p-1)*PAGE, p*PAGE), total: hit.length, totalPages: Math.max(1, Math.ceil(hit.length/PAGE)) };
+  }
+
+  async function fetchQuote(row) {
+    if (row.quote) return row.quote;
+    if (quoteCache.has(row.slug)) return quoteCache.get(row.slug);
+    let q = '';
+    if (LIVE) {
+      try {
+        const h = await (await fetch('/conversations/' + encodeURIComponent(row.slug))).text();
+        const m = h.match(/<meta\s+name="description"\s+content="([^"]*)"/i);
+        q = cleanQuote(m && m[1], row.name);
+      } catch (e) { /* leave empty; user can type one */ }
+    }
+    quoteCache.set(row.slug, q);
+    return q;
+  }
+
+  // ---------- Search UI ----------
+  let timer;
+  async function runSearch(reset) {
+    const q = $('q').value.trim();
+    if (reset) { page = 1; shown = []; lastQ = q; }
+    $('clear').style.display = q ? 'block' : 'none';
+    $('meta').textContent = 'Searching…';
+    try {
+      const res = await (LIVE ? searchLive(lastQ, page) : searchSnapshot(lastQ, page));
+      totalPages = res.totalPages;
+      shown = reset ? res.rows : shown.concat(res.rows);
+      lastTotal = res.total; renderResults(lastTotal);
+    } catch (e) {
+      $('meta').textContent = e.message;
+      $('results').innerHTML = '';
+    }
+  }
+
+  function photo(row) {
+    return row.img || '';
+  }
+
+  function renderResults(total) {
+    const upd = $('meta').dataset.updated;
+    $('meta').textContent = (lastQ ? `${total} match${total===1?'':'es'}` : `${total} conversations — newest first`) +
+      (!LIVE && upd ? ` · list updated ${new Date(upd).toLocaleDateString()}` : '');
+    const ul = $('results');
+    if (!shown.length) { ul.innerHTML = '<li class="empty">Nothing found. Try a surname or company.</li>'; $('more').hidden = true; return; }
+    ul.innerHTML = shown.map((r, i) => {
+      const sel = chosen.some(c => c.row.slug === r.slug);
+      const img = photo(r) ? `<img class="thumb" src="${esc(photo(r))}" alt="" loading="lazy">` : `<div class="initials">${esc(r.initials || (r.name||'?').split(' ').map(w=>w[0]).slice(0,2).join(''))}</div>`;
+      return `<li class="item${sel?' sel':''}" data-i="${i}">${img}
+        <div class="t"><div class="n">${esc(r.name)}</div>
+        <div class="r">${esc([r.role, r.company].filter(Boolean).join(', '))}${r.region||r.year?` · ${esc([r.region, r.year].filter(Boolean).join(' '))}`:''}</div>
+        <div class="h">${esc(headline(r))}</div></div>
+        <span class="add">${sel?'✓':'+'}</span></li>`;
+    }).join('');
+    $('more').hidden = page >= totalPages;
+  }
+
+  function headline(r) {
+    const h = (r.headline || r.title || '').trim();
+    return (!h || norm(h) === norm(r.name)) ? `Conversation with ${r.name}` : h;
+  }
+
+  $('results').addEventListener('click', async (e) => {
+    const li = e.target.closest('.item'); if (!li) return;
+    const row = shown[+li.dataset.i];
+    const at = chosen.findIndex(c => c.row.slug === row.slug);
+    if (at >= 0) chosen.splice(at, 1);
+    else {
+      if (chosen.length >= MAX) return toast(`Up to ${MAX} conversations at a time.`, true);
+      const c = { row, quote: '' }; chosen.push(c);
+      renderChosen();
+      c.quote = await fetchQuote(row);
+    }
+    renderResults(lastTotal);
+    renderChosen();
+  });
+
+  $('q').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => runSearch(true), 250); });
+  $('clear').addEventListener('click', () => { $('q').value=''; runSearch(true); $('q').focus(); });
+  $('more').addEventListener('click', () => { page++; runSearch(false); });
+
+  // ---------- Selected tray ----------
+  function renderChosen() {
+    $('chosenWrap').hidden = !chosen.length;
+    $('insert').disabled = $('copy').disabled = !chosen.length;
+    $('chosen').innerHTML = chosen.map((c, i) => `
+      <div class="c" data-i="${i}">
+        <div class="row"><span class="n">${esc(c.row.name)} — ${esc(c.row.company||'')}</span>
+          <button class="ic" data-act="up" title="Move up" ${i===0?'disabled':''}>↑</button>
+          <button class="ic" data-act="down" title="Move down" ${i===chosen.length-1?'disabled':''}>↓</button>
+          <button class="ic" data-act="rm" title="Remove">×</button></div>
+        <textarea data-act="quote" placeholder="Pull quote (optional) — type or paste one from the interview">${esc(c.quote)}</textarea>
+      </div>`).join('');
+    renderPreview();
+  }
+
+  $('chosen').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-act]'); if (!b) return;
+    const i = +b.closest('.c').dataset.i;
+    if (b.dataset.act === 'rm') chosen.splice(i, 1);
+    if (b.dataset.act === 'up' && i > 0) [chosen[i-1], chosen[i]] = [chosen[i], chosen[i-1]];
+    if (b.dataset.act === 'down' && i < chosen.length-1) [chosen[i+1], chosen[i]] = [chosen[i], chosen[i+1]];
+    renderChosen(); renderResults(lastTotal);
+  });
+  $('chosen').addEventListener('input', (e) => {
+    if (e.target.dataset.act !== 'quote') return;
+    chosen[+e.target.closest('.c').dataset.i].quote = e.target.value; renderPreview();
+  });
+  ['layout','lead'].forEach(id => $(id).addEventListener('change', renderPreview));
+
+  // ---------- Email HTML (same look as the CRM "Conversation Preview" card) ----------
+  const F = 'font-family:Arial,Helvetica,sans-serif;';
+  function url(r) { return `${SITE}/conversations/${encodeURIComponent(r.slug)}`; }
+  function byline(r) {
+    const ppl = (r.people && r.people.length > 1) ? r.people.map(p => p.name).join(' & ') : r.name;
+    return [ppl, [r.role && (!r.people || r.people.length < 2) ? r.role : '', r.company].filter(Boolean).join(', ')].filter(Boolean).join(' — ');
+  }
+  function textBlock(c, kicker) {
+    const r = c.row, q = (c.quote||'').trim();
+    return `<p style="margin:0 0 2px;${F}font-size:10pt;font-weight:700;letter-spacing:1.2px;color:#999999;text-transform:uppercase;">${kicker}</p>`
+      + `<p style="margin:0;${F}font-size:12pt;font-weight:700;line-height:1.35;color:#1a1a1a;"><a href="${esc(url(r))}" style="color:#1a1a1a;text-decoration:none;">${esc(headline(r))}</a></p>`
+      + (q ? `<p style="margin:8px 0;font-family:Georgia,'Times New Roman',serif;font-size:11.5pt;font-style:italic;line-height:1.45;color:#333333;">“${esc(q)}”</p>` : `<p style="margin:6px 0 0;"></p>`)
+      + `<p style="margin:0;${F}font-size:10.5pt;color:#888888;">${esc(byline(r))}</p>`;
+  }
+  function img(r, w) {
+    if (!r.img) return '';
+    return `<a href="${esc(url(r))}" style="text-decoration:none;"><img src="${esc(r.img)}" width="${w}" alt="${esc(r.name)}" style="display:block;width:${w}px;height:auto;max-width:100%;border:0;"></a>`;
+  }
+  function buildHtml() {
+    if (!chosen.length) return '';
+    const lead = $('lead').checked ? `<p style="margin:0 0 6px;${F}font-size:12pt;">For reference, we recently met with:</p>` : '';
+    let body = '';
+    if ($('layout').value === 'grid') {
+      for (let i = 0; i < chosen.length; i += 2) {
+        const pair = chosen.slice(i, i+2);
+        body += `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:640px;border-collapse:collapse;margin:0 0 6px;"><tr>`
+          + pair.map(c => `<td valign="top" style="width:50%;padding:12px 16px 12px 0;vertical-align:top;">${img(c.row,120) ? img(c.row,120) + '<div style="height:8px;line-height:8px;font-size:1px;">&nbsp;</div>' : ''}${textBlock(c,'Executive Forecast')}</td>`).join('')
+          + (pair.length === 1 ? '<td style="width:50%;"></td>' : '') + `</tr></table>`;
+      }
+    } else {
+      body = chosen.map(c => {
+        const pic = img(c.row, 120);
+        return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:640px;border-collapse:collapse;margin:0 0 4px;"><tr>`
+          + (pic ? `<td valign="top" style="width:120px;padding:12px 16px 12px 0;vertical-align:top;">${pic}</td>` : '')
+          + `<td valign="top" style="padding:12px 0;vertical-align:top;">${textBlock(c,'Executive Forecast — Conversation')}</td></tr></table>`;
+      }).join('');
+    }
+    return `${lead}${body}<p style="margin:0;${F}font-size:12pt;">&nbsp;</p>`;
+  }
+  function renderPreview() { $('preview').innerHTML = buildHtml(); }
+
+  // ---------- Insert / copy ----------
+  function toast(msg, err) {
+    const t = $('toast'); t.textContent = msg; t.className = 'toast ' + (err ? 'err' : 'ok');
+    clearTimeout(t._h); t._h = setTimeout(() => t.className = 'toast', 3500);
+  }
+
+  $('insert').addEventListener('click', () => {
+    const html = buildHtml();
+    if (!inOutlook) return toast('Open this from the Outlook compose window to insert — or use Copy and paste.', true);
+    Office.context.mailbox.item.body.setSelectedDataAsync(html, { coercionType: Office.CoercionType.Html }, (res) => {
+      if (res.status === Office.AsyncResultStatus.Succeeded) {
+        toast(`Inserted ${chosen.length} conversation${chosen.length>1?'s':''}.`);
+        chosen.length = 0; renderChosen(); renderResults(lastTotal);
+      } else toast('Outlook refused the insert: ' + (res.error && res.error.message), true);
+    });
+  });
+
+  $('copy').addEventListener('click', async () => {
+    const html = buildHtml();
+    try {
+      await navigator.clipboard.write([new ClipboardItem({
+        'text/html': new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([$('preview').innerText], { type: 'text/plain' })
+      })]);
+      toast('Copied — paste it into your email.');
+    } catch (e) { toast('Copy was blocked by the browser. Use Insert instead.', true); }
+  });
+
+  // ---------- Start ----------
+  function start() { runSearch(true); }
+  if (window.Office && Office.onReady) {
+    Office.onReady((info) => { inOutlook = info.host === Office.HostType.Outlook && !!(Office.context.mailbox && Office.context.mailbox.item); start(); });
+  } else start();
+})();
+</script>
+</body>
+</html>
