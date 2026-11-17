@@ -32,7 +32,7 @@ Once deployed, `https://executiveforecast.com/outlook-addin/taskpane.html` shoul
 
 **Option B: host on GitHub Pages, with no change to the website.**
 1. Push this folder to a GitHub repository and turn on Pages for it (Settings → Pages → Deploy from branch → main / root).
-2. Under Actions, run **Refresh conversation list** once. It writes `conversations.json`, about 1,400 conversations including their quotes. After that it refreshes every night, so new interviews show up within a day.
+2. Put `conversations.json` in the repository: about 1,400 conversations including their quotes. The **Refresh conversation list** workflow under Actions was meant to rebuild it every night, but executiveforecast.com's bot protection turns away requests from GitHub's servers. So for now the list is rebuilt from a normal browser on the website, by asking Claude to refresh it. Once the website allows the refresh, or simply hosts the add-in (Option A), the list updates by itself.
 3. Run `python3 make_manifest.py https://<user>.github.io/<repo>` to rebuild `manifest.xml` for that address.
 
 The add-in chooses its mode by itself. When it is served from executiveforecast.com it searches live; anywhere else it reads `conversations.json`.
